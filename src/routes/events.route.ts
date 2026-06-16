@@ -9,6 +9,10 @@ import {
 
 export const eventsRouter = Router();
 
+function errorResponse(error: string, description: string) {
+  return { error, description };
+}
+
 function isValidObjectId(id: string): boolean {
   return mongoose.Types.ObjectId.isValid(id);
 }
@@ -20,22 +24,20 @@ function isEventStatus(value: unknown): value is EventStatus {
   );
 }
 
-function parseEventInput(
+function parseCreateEventInput(
   body: Record<string, unknown>,
-  partial: boolean,
 ):
   | { ok: true; data: Record<string, unknown> }
   | { ok: false; error: string } {
   const data: Record<string, unknown> = {};
 
-  if ("title" in body) {
-    if (typeof body.title !== "string" || !body.title.trim()) {
-      return { ok: false, error: "title must be a non-empty string" };
-    }
-    data.title = body.title.trim();
-  } else if (!partial) {
+  if (!("title" in body)) {
     return { ok: false, error: "title is required" };
   }
+  if (typeof body.title !== "string" || !body.title.trim()) {
+    return { ok: false, error: "title must be a non-empty string" };
+  }
+  data.title = body.title.trim();
 
   if ("description" in body) {
     if (body.description !== undefined && typeof body.description !== "string") {
@@ -44,23 +46,23 @@ function parseEventInput(
     data.description = body.description?.trim() || undefined;
   }
 
-  if ("date" in body) {
-    const date = new Date(body.date as string);
-    if (Number.isNaN(date.getTime())) {
-      return { ok: false, error: "date must be a valid date" };
-    }
-    data.date = date;
-  } else if (!partial) {
+  if (!("date" in body)) {
     return { ok: false, error: "date is required" };
   }
+  const date = new Date(body.date as string);
+  if (Number.isNaN(date.getTime())) {
+    return { ok: false, error: "date must be a valid date" };
+  }
+  if (date.getTime() <= Date.now()) {
+    return { ok: false, error: "date must be in the future" };
+  }
+  data.date = date;
 
   if ("location" in body) {
     if (typeof body.location !== "string" || !body.location.trim()) {
       return { ok: false, error: "location must be a non-empty string" };
     }
     data.location = body.location.trim();
-  } else if (!partial) {
-    return { ok: false, error: "location is required" };
   }
 
   if ("status" in body) {
@@ -71,116 +73,139 @@ function parseEventInput(
       };
     }
     data.status = body.status;
-  } else if (!partial) {
-    return { ok: false, error: "status is required" };
   }
 
   return { ok: true, data };
 }
 
-/**
- * @openapi
+function parseStatusInput(
+  body: Record<string, unknown>,
+):
+  | { ok: true; data: { status: EventStatus } }
+  | { ok: false; error: string } {
+  if (!("status" in body)) {
+    return { ok: false, error: "status is required" };
+  }
+
+  if (!isEventStatus(body.status)) {
+    return {
+      ok: false,
+      error: `status must be one of: ${EVENT_STATUSES.join(", ")}`,
+    };
+  }
+
+  return { ok: true, data: { status: body.status } };
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parseEventFilters(query: Record<string, unknown>):
+  | { ok: true; filter: Record<string, unknown> }
+  | { ok: false; error: string } {
+  const filter: Record<string, unknown> = {};
+
+  if (query.status !== undefined) {
+    if (!isEventStatus(query.status)) {
+      return {
+        ok: false,
+        error: `status must be one of: ${EVENT_STATUSES.join(", ")}`,
+      };
+    }
+    filter.status = query.status;
+  }
+
+  if (query.from !== undefined) {
+    const from =
+      typeof query.from === "string" ? new Date(query.from) : new Date(NaN);
+    if (Number.isNaN(from.getTime())) {
+      return { ok: false, error: "from must be a valid date" };
+    }
+    filter.date = { ...(filter.date as object), $gte: from };
+  }
+
+  if (query.to !== undefined) {
+    const to = typeof query.to === "string" ? new Date(query.to) : new Date(NaN);
+    if (Number.isNaN(to.getTime())) {
+      return { ok: false, error: "to must be a valid date" };
+    }
+    filter.date = { ...(filter.date as object), $lte: to };
+  }
+
+  if (query.title !== undefined) {
+    if (typeof query.title !== "string" || !query.title.trim()) {
+      return { ok: false, error: "title must be a non-empty string" };
+    }
+    filter.title = {
+      $regex: escapeRegex(query.title.trim()),
+      $options: "i",
+    };
+  }
+
+  return { ok: true, filter };
+}
+
+/** @openapi
  * /api/events:
  *   get:
  *     operationId: listEvents
- *     summary: List all events
  *     tags: [events]
- *     responses:
- *       "200":
- *         description: List of events
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: "#/components/schemas/Event"
+ *     parameters:
+ *       - { in: query, name: status, schema: { $ref: "#/components/schemas/EventStatus" } }
+ *       - { in: query, name: from, schema: { type: string, format: date-time } }
+ *       - { in: query, name: to, schema: { type: string, format: date-time } }
+ *       - { in: query, name: title, schema: { type: string } }
  */
-eventsRouter.get("/", async (_req, res) => {
-  const events = await EventModel.find().sort({ date: 1 }).lean();
+eventsRouter.get("/", async (req, res) => {
+  const parsed = parseEventFilters(req.query);
+  if (!parsed.ok) {
+    res.status(400).json(errorResponse("bad_request", parsed.error));
+    return;
+  }
+
+  const events = await EventModel.find(parsed.filter).sort({ date: 1 }).lean();
   res.json(events);
 });
 
-/**
- * @openapi
+/** @openapi
  * /api/events/{id}:
  *   get:
  *     operationId: getEventById
- *     summary: Get event by ID
  *     tags: [events]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       "200":
- *         description: Event found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/Event"
- *       "400":
- *         description: Invalid event ID
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
- *       "404":
- *         description: Event not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
  */
 eventsRouter.get("/:id", async (req, res) => {
   const { id } = req.params;
 
   if (!isValidObjectId(id)) {
-    res.status(400).json({ error: "Invalid event ID" });
+    res.status(400).json(errorResponse("invalid_event_id", "Invalid event ID"));
     return;
   }
 
   const event = await EventModel.findById(id).lean();
   if (!event) {
-    res.status(404).json({ error: "Event not found" });
+    res.status(404).json(errorResponse("event_not_found", "Event not found"));
     return;
   }
 
   res.json(event);
 });
 
-/**
- * @openapi
+/** @openapi
  * /api/events:
  *   post:
  *     operationId: createEvent
- *     summary: Create a new event
  *     tags: [events]
  *     requestBody:
- *       required: true
  *       content:
  *         application/json:
- *           schema:
- *             $ref: "#/components/schemas/CreateEventRequest"
- *     responses:
- *       "201":
- *         description: Event created
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/Event"
- *       "400":
- *         description: Invalid request body
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
+ *           schema: { $ref: "#/components/schemas/CreateEventRequest" }
  */
 eventsRouter.post("/", async (req, res) => {
-  const parsed = parseEventInput(req.body ?? {}, false);
+  const parsed = parseCreateEventInput(req.body ?? {});
   if (!parsed.ok) {
-    res.status(400).json({ error: parsed.error });
+    res.status(400).json(errorResponse("bad_request", parsed.error));
     return;
   }
 
@@ -188,61 +213,28 @@ eventsRouter.post("/", async (req, res) => {
   res.status(201).json(event.toObject());
 });
 
-/**
- * @openapi
- * /api/events/{id}:
+/** @openapi
+ * /api/events/{id}/status:
  *   patch:
- *     operationId: patchEvent
- *     summary: Partially update an event
+ *     operationId: patchEventStatus
  *     tags: [events]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
  *     requestBody:
- *       required: true
  *       content:
  *         application/json:
- *           schema:
- *             $ref: "#/components/schemas/UpdateEventRequest"
- *     responses:
- *       "200":
- *         description: Event updated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/Event"
- *       "400":
- *         description: Invalid request
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
- *       "404":
- *         description: Event not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
+ *           schema: { $ref: "#/components/schemas/UpdateEventStatusRequest" }
  */
-eventsRouter.patch("/:id", async (req, res) => {
+eventsRouter.patch("/:id/status", async (req, res) => {
   const { id } = req.params;
 
   if (!isValidObjectId(id)) {
-    res.status(400).json({ error: "Invalid event ID" });
+    res.status(400).json(errorResponse("invalid_event_id", "Invalid event ID"));
     return;
   }
 
-  const parsed = parseEventInput(req.body ?? {}, true);
+  const parsed = parseStatusInput(req.body ?? {});
   if (!parsed.ok) {
-    res.status(400).json({ error: parsed.error });
-    return;
-  }
-
-  if (Object.keys(parsed.data).length === 0) {
-    res.status(400).json({ error: "At least one field is required" });
+    res.status(400).json(errorResponse("bad_request", parsed.error));
     return;
   }
 
@@ -252,53 +244,31 @@ eventsRouter.patch("/:id", async (req, res) => {
   }).lean();
 
   if (!event) {
-    res.status(404).json({ error: "Event not found" });
+    res.status(404).json(errorResponse("event_not_found", "Event not found"));
     return;
   }
 
   res.json(event);
 });
 
-/**
- * @openapi
+/** @openapi
  * /api/events/{id}:
  *   delete:
  *     operationId: deleteEvent
- *     summary: Delete an event
  *     tags: [events]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       "204":
- *         description: Event deleted
- *       "400":
- *         description: Invalid event ID
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
- *       "404":
- *         description: Event not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
  */
 eventsRouter.delete("/:id", async (req, res) => {
   const { id } = req.params;
 
   if (!isValidObjectId(id)) {
-    res.status(400).json({ error: "Invalid event ID" });
+    res.status(400).json(errorResponse("invalid_event_id", "Invalid event ID"));
     return;
   }
 
   const event = await EventModel.findByIdAndDelete(id).lean();
   if (!event) {
-    res.status(404).json({ error: "Event not found" });
+    res.status(404).json(errorResponse("event_not_found", "Event not found"));
     return;
   }
 

@@ -8,11 +8,12 @@ const eventSchema = new Schema(
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
     date: { type: Date, required: true },
-    location: { type: String, required: true, trim: true },
+    location: { type: String, trim: true },
     status: {
       type: String,
       enum: EVENT_STATUSES,
       required: true,
+      default: "draft",
     },
   },
   {

@@ -11,16 +11,20 @@
  *           example: Event App API
  *     ErrorResponse:
  *       type: object
- *       required: [error]
+ *       required: [error, description]
  *       properties:
  *         error:
  *           type: string
+ *           description: Machine-readable error code
+ *         description:
+ *           type: string
+ *           description: Human-readable error message
  *     EventStatus:
  *       type: string
  *       enum: [draft, published, cancelled]
  *     Event:
  *       type: object
- *       required: [_id, title, date, location, status, createdAt]
+ *       required: [_id, title, date, status, createdAt]
  *       properties:
  *         _id:
  *           type: string
@@ -40,7 +44,7 @@
  *           format: date-time
  *     CreateEventRequest:
  *       type: object
- *       required: [title, date, location, status]
+ *       required: [title, date]
  *       properties:
  *         title:
  *           type: string
@@ -53,20 +57,23 @@
  *           type: string
  *         status:
  *           $ref: "#/components/schemas/EventStatus"
- *     UpdateEventRequest:
+ *     UpdateEventStatusRequest:
  *       type: object
+ *       required: [status]
  *       properties:
- *         title:
- *           type: string
- *         description:
- *           type: string
- *         date:
- *           type: string
- *           format: date-time
- *         location:
- *           type: string
  *         status:
  *           $ref: "#/components/schemas/EventStatus"
+ *   responses:
+ *     BadRequest:
+ *       description: Invalid request parameters or body
+ *       content:
+ *         application/json:
+ *           schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *     NotFound:
+ *       description: Requested resource was not found
+ *       content:
+ *         application/json:
+ *           schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 
 export {};
