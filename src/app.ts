@@ -31,10 +31,10 @@ export function createApp() {
     res.json({ message: "Event App API" });
   });
 
+  app.use(openapiRouter);
   app.use("/api/auth", authRouter);
   app.use(requireAdminAuth);
   app.use("/api/events", eventsRouter);
-  app.use(openapiRouter);
 
   return app;
 }
