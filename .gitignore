@@ -1,19 +1,36 @@
+# Dependencies & Yarn PnP
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+node_modules
+.pnp.*
 
+# Build output
 dist/
+*.tsbuildinfo
 
+# Environment (keep .env.example tracked)
+.env
+.env.local
+.env.*.local
+
+# IDE
 .idea/
 
-node_modules
+# macOS
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Test coverage
+coverage/
 
 # Swap the comments on the following lines if you wish to use zero-installs
 # In that case, don't forget to run `yarn config set enableGlobalCache false`!
 # Documentation here: https://yarnpkg.com/features/caching#zero-installs
-.env
 #!.yarn/cache
-.pnp.*

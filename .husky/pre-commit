@@ -1,0 +1,2 @@
+yarn openapi:generate
+git add openapi/openapi.json

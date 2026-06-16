@@ -46,10 +46,24 @@ yarn dev
 
 API runs at [http://localhost:3000](http://localhost:3000).
 
-| Endpoint   | Description        |
-|------------|--------------------|
-| `GET /`    | API welcome        |
-| `GET /health` | Health + DB status |
+| Endpoint          | Description              |
+|-------------------|--------------------------|
+| `GET /`           | API welcome              |
+| `GET /health`     | Health + DB status       |
+| `GET /openapi.json` | OpenAPI spec (JSON)    |
+| `GET /api-docs`   | Swagger UI               |
+
+## OpenAPI contract
+
+The backend owns the API contract. Route handlers are annotated with `@openapi` JSDoc; the spec is generated from code:
+
+```bash
+yarn openapi:generate   # writes openapi/openapi.json
+```
+
+This runs automatically on every commit (via Husky) so the committed spec stays in sync with the routes.
+
+The frontend generates TypeScript types from `openapi/openapi.json` with `npm run api:types`.
 
 ## Production build
 
@@ -63,7 +77,12 @@ yarn start
 ```
 src/
   config/       # env & database
+  openapi/      # shared schemas & swagger-jsdoc config
   routes/       # Express routers
   app.ts        # Express app setup
   index.ts      # entry point
+openapi/
+  openapi.json  # generated API contract (committed, auto-updated on commit)
+scripts/
+  generate-openapi.ts
 ```
