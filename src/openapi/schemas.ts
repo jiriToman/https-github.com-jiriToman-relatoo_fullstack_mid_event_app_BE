@@ -19,6 +19,23 @@
  *         description:
  *           type: string
  *           description: Human-readable error message
+ *     LoginRequest:
+ *       type: object
+ *       required: [username, password]
+ *       properties:
+ *         username:
+ *           type: string
+ *         password:
+ *           type: string
+ *     LoginResponse:
+ *       type: object
+ *       required: [token, tokenType]
+ *       properties:
+ *         token:
+ *           type: string
+ *         tokenType:
+ *           type: string
+ *           enum: [Bearer]
  *     EventStatus:
  *       type: string
  *       enum: [draft, published, cancelled]
@@ -71,6 +88,11 @@
  *           schema: { $ref: "#/components/schemas/ErrorResponse" }
  *     NotFound:
  *       description: Requested resource was not found
+ *       content:
+ *         application/json:
+ *           schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *     Unauthorized:
+ *       description: Authentication failed or missing token
  *       content:
  *         application/json:
  *           schema: { $ref: "#/components/schemas/ErrorResponse" }
