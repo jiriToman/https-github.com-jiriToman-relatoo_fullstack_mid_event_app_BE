@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
 
-import { healthRouter } from "./routes/health.route.js";
+import { eventsRouter } from "./routes/events.route.js";
 import { openapiRouter } from "./routes/openapi.route.js";
 
 export function createApp() {
@@ -29,7 +29,7 @@ export function createApp() {
     res.json({ message: "Event App API" });
   });
 
-  app.use("/health", healthRouter);
+  app.use("/api/events", eventsRouter);
   app.use(openapiRouter);
 
   return app;

@@ -46,12 +46,31 @@ yarn dev
 
 API runs at [http://localhost:3000](http://localhost:3000).
 
-| Endpoint          | Description              |
-|-------------------|--------------------------|
-| `GET /`           | API welcome              |
-| `GET /health`     | Health + DB status       |
-| `GET /openapi.json` | OpenAPI spec (JSON)    |
-| `GET /api-docs`   | Swagger UI               |
+### Seed sample data
+
+To start dev with 20 sample events (replaces existing events in the DB):
+
+```bash
+yarn dev:generateEvents
+```
+
+### API reference
+
+Endpoints, request/response schemas, and the `Event` model are defined in the OpenAPI contract:
+
+- **JSON spec:** [http://localhost:3000/openapi.json](http://localhost:3000/openapi.json)
+- **Committed spec:** [`openapi/openapi.json`](openapi/openapi.json)
+
+## Scripts
+
+| Command                  | Description                              |
+|--------------------------|------------------------------------------|
+| `yarn dev`               | Start dev server with hot reload         |
+| `yarn dev:generateEvents`| Dev server + seed 20 sample events       |
+| `yarn build`             | Generate OpenAPI spec and compile TS     |
+| `yarn start`             | Run production build                     |
+| `yarn typecheck`         | Type-check without emitting              |
+| `yarn openapi:generate`  | Write `openapi/openapi.json` from code   |
 
 ## OpenAPI contract
 
@@ -76,13 +95,15 @@ yarn start
 
 ```
 src/
-  config/       # env & database
-  openapi/      # shared schemas & swagger-jsdoc config
-  routes/       # Express routers
-  app.ts        # Express app setup
-  index.ts      # entry point
+  config/         # env & database
+  models/         # Mongoose models
+  openapi/        # shared schemas & swagger-jsdoc config
+  routes/         # Express routers (events, openapi)
+  scripts/        # dev utilities (event seeding)
+  app.ts          # Express app setup
+  index.ts        # entry point
 openapi/
-  openapi.json  # generated API contract (committed, auto-updated on commit)
+  openapi.json    # generated API contract (committed, auto-updated on commit)
 scripts/
   generate-openapi.ts
 ```

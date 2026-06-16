@@ -1,9 +1,14 @@
+import { generateEvents } from "./scripts/generate-events.js";
 import { createApp } from "./app.js";
 import { connectDatabase, disconnectDatabase } from "./config/database.js";
 import { env } from "./config/env.js";
 
 async function main() {
   await connectDatabase();
+
+  if (process.argv.includes("generateEvents")) {
+    await generateEvents(20);
+  }
 
   const app = createApp();
 

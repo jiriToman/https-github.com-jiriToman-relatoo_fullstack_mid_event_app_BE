@@ -9,19 +9,64 @@
  *         message:
  *           type: string
  *           example: Event App API
- *     HealthResponse:
+ *     ErrorResponse:
  *       type: object
- *       required: [status, database, timestamp]
+ *       required: [error]
  *       properties:
- *         status:
+ *         error:
  *           type: string
- *           enum: [ok]
- *         database:
+ *     EventStatus:
+ *       type: string
+ *       enum: [draft, published, cancelled]
+ *     Event:
+ *       type: object
+ *       required: [_id, title, date, location, status, createdAt]
+ *       properties:
+ *         _id:
  *           type: string
- *           enum: [connected, connecting, disconnected]
- *         timestamp:
+ *         title:
+ *           type: string
+ *         description:
+ *           type: string
+ *         date:
  *           type: string
  *           format: date-time
+ *         location:
+ *           type: string
+ *         status:
+ *           $ref: "#/components/schemas/EventStatus"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *     CreateEventRequest:
+ *       type: object
+ *       required: [title, date, location, status]
+ *       properties:
+ *         title:
+ *           type: string
+ *         description:
+ *           type: string
+ *         date:
+ *           type: string
+ *           format: date-time
+ *         location:
+ *           type: string
+ *         status:
+ *           $ref: "#/components/schemas/EventStatus"
+ *     UpdateEventRequest:
+ *       type: object
+ *       properties:
+ *         title:
+ *           type: string
+ *         description:
+ *           type: string
+ *         date:
+ *           type: string
+ *           format: date-time
+ *         location:
+ *           type: string
+ *         status:
+ *           $ref: "#/components/schemas/EventStatus"
  */
 
 export {};

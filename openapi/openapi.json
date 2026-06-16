@@ -33,27 +33,6 @@
         }
       }
     },
-    "/health": {
-      "get": {
-        "operationId": "getHealth",
-        "summary": "Health check with database status",
-        "tags": [
-          "meta"
-        ],
-        "responses": {
-          "200": {
-            "description": "Service health",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/events": {
       "get": {
         "operationId": "listEvents",
@@ -167,9 +146,9 @@
           }
         }
       },
-      "put": {
-        "operationId": "updateEvent",
-        "summary": "Update an event",
+      "patch": {
+        "operationId": "patchEvent",
+        "summary": "Partially update an event",
         "tags": [
           "events"
         ],
@@ -281,34 +260,6 @@
           "message": {
             "type": "string",
             "example": "Event App API"
-          }
-        }
-      },
-      "HealthResponse": {
-        "type": "object",
-        "required": [
-          "status",
-          "database",
-          "timestamp"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "ok"
-            ]
-          },
-          "database": {
-            "type": "string",
-            "enum": [
-              "connected",
-              "connecting",
-              "disconnected"
-            ]
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
           }
         }
       },
